@@ -1,0 +1,894 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>reveal.js</title>
+
+		<link rel="stylesheet" href="dist/reset.css">
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/white.css">
+
+		<!-- Theme used for syntax highlighted code -->
+		<link rel="stylesheet" href="plugin/highlight/monokai.css">
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section data-background="media/intro.png">
+				</section>
+				<section data-auto-animate>
+					<h2 style="margin-top: -200px;">Who am I?</h2>
+					<ul>
+						<li>Senior Software Engineer at Google</li>
+						<li>DC efficiency</li>
+					</ul>
+				</section>
+				<section>
+					<h2 style="margin-top: -200px;">Agenda for today</h2>
+					<ul>
+						<li>History of sorting</li>
+						<li>Why have we decided to change anything?</li>
+						<li>Bugs, bugs, bugs</li>
+						<li>Implementation</li>
+						<li>What can you do?</li>
+					</ul>
+				</section>
+				<section data-auto-animate>
+					<h2 style="margin-top: -200px;">Reminders</h2>
+					<ul>
+						<li>Sorting is the ordering of elements</li>
+						<li>std::sort, std::stable_sort, ranges::sort, etc</li>
+					</ul>
+<pre data-id="code-animation"><code class="cpp" data-noescape><script type="text/template">               std::sort(begin, end);
+	             std::ranges::sort(cont);
+</script></code></pre>
+				</section>
+				<section data-auto-animate>
+					<h2 style="margin-top: -200px;">Reminders</h2>
+					<ul>
+						<li>Sorting is the ordering of elements</li>
+						<li>std::sort, std::stable_sort, ranges::sort, etc</li>
+					</ul>
+<pre data-id="code-animation"><code class="cpp" data-noescape><script type="text/template">               std::sort(begin, end, comp);
+	             std::ranges::sort(cont, comp);
+</script></code></pre>
+				</section>
+				<section data-auto-animate>
+					<h2>Quicksort</h2>
+					<ul>
+						<li data-id="qsort" class="fragment" data-fragment-index="2">Quick sort</li>
+						<li class="fragment" data-fragment-index="3">Take any element</li>
+						<li class="fragment" data-fragment-index="4">Less to the left</li>
+						<li class="fragment" data-fragment-index="5">More to the right</li>
+						<li class="fragment" data-fragment-index="6">Recurse on both parts</li>
+					</ul>
+				</section>
+				<section data-auto-animate>
+					<ul><li data-id="qsort">Quick sort (STL version)</li></ul>
+					<pre><code class="cpp" data-trim data-noescape data-line-numbers=1-5|3><script type="text/template">
+template <class RandomAccessIterator>
+void sort(RandomAccessIterator first, RandomAccessIterator last) {
+    __quick_sort_loop(first, last);
+    __final_insertion_sort(first, last);
+}
+					</script></code></pre>
+				</section>
+				<section data-auto-animate>
+					<ul><li data-id="qsort">Quick sort (STL version)</li></ul>
+					<pre><code class="cpp" data-trim data-noescape data-line-numbers=1-20|6-8|4><script type="text/template">
+template <class RandomAccessIterator, class T, class Compare>
+void __quick_sort_loop(RandomAccessIterator first,
+               RandomAccessIterator last, Compare comp) {
+  while (last - first > __stl_threshold) {
+    RandomAccessIterator cut = __unguarded_partition
+    (first, last, T(__median(*first,
+                    *(first + (last - first)/2),
+                    *(last - 1),
+                    comp)),
+     comp);
+    if (cut - first >= last - cut) {
+      __quick_sort_loop(cut, last, comp);
+      last = cut;
+    } else {
+      __quick_sort_loop(first, cut, comp);
+      first = cut;
+    }
+  }
+}
+				</script></code></pre>
+				</section>
+				<section data-auto-animate>
+					<ul><li data-id="qsort">Quick sort (STL version)</li></ul>
+					<pre><code  class="cpp" data-trim data-noescape data-line-numbers=4><script type="text/template">
+template <class RandomAccessIterator>
+void sort(RandomAccessIterator first, RandomAccessIterator last) {
+    __quick_sort_loop(first, last);
+    __final_insertion_sort(first, last);
+}
+					</script></code></pre>
+				</section>
+				<section data-auto-animate>
+					<ul><li data-id="qsort">Quick sort (STL version)</li></ul>
+					<video data-autoplay src="media/first_quick_sort.mp4">
+					</video>
+				</section>
+				<!-- <section>
+					And honestly, it hadn't been progressing much for years in all implementations
+				</section> -->
+				<section>
+					<h2 style="margin-top: -200px;">Standard library evolved from STL</h2>
+				</section>
+				<section data-auto-animate>
+					<h4>std::sort</h4>
+					<img src="media/std_sort.png">
+					<img class="fragment fade-out" data-fragment-index="2" width="1200" height="130" src="media/complexity.png" style="margin-top: 000px;" />
+				  <img class="fragment fade-in" data-fragment-index="2" width="1200" height="200" src="media/average.png" style="margin-top: -220px;" />
+				</section>
+				<section data-auto-animate>
+					<p>Quicksort's worst case is $O(n^2)$</p>
+					<p>Just pick the worst element</p>
+				</section>
+				<section>
+					<p>GCC libstdc++</p>
+				<pre><code class="cpp" data-trim data-noescape  data-line-numbers=1-12|7-9><script data-id="impl_sort" type="text/template">
+template<typename _RandomAccessIterator, typename _Compare>
+	inline void
+	__sort(_RandomAccessIterator __first, _RandomAccessIterator __last, _Compare __comp)
+	{
+	if (__first != __last)
+	{
+	  std::__introsort_loop(__first, __last,
+				std::__lg(__last - __first) * 2,
+				__comp);
+	  std::__final_insertion_sort(__first, __last, __comp);
+	}
+}
+				</script></code></pre>
+				</section>
+				<section data-auto-animate>
+<div class="container">
+
+<div class="col">
+GCC<pre><code class="cpp" data-trim data-noescape  data-line-numbers=7-9|8><script data-id="impl_sort" type="text/template">
+template<typename _RandomAccessIterator, typename _Compare>
+	inline void
+	__sort(_RandomAccessIterator __first, _RandomAccessIterator __last, _Compare __comp)
+	{
+	if (__first != __last)
+	{
+	  std::__introsort_loop(__first, __last,
+				std::__lg(__last - __first) * 2,
+				__comp);
+	  std::__final_insertion_sort(__first, __last, __comp);
+	}
+}
+				</script></code></pre>
+</div>
+
+<div class="col">
+					Original<pre><code class="cpp" data-trim data-noescape data-line-numbers=3><script type="text/template">
+template <class RandomAccessIterator>
+void sort(RandomAccessIterator first, RandomAccessIterator last) {
+    __quick_sort_loop(first, last);
+    __final_insertion_sort(first, last);
+}
+					</script></code></pre>
+</div>
+
+</div>
+</section>
+
+				<section data-auto-animate>
+					<h2 data-id="introsort" style="margin-top: -200px;">Introsort</h2>
+					<ul>
+						<li class="fragment" data-fragment-index="2">Almost like a quick sort</li>
+						<li class="fragment" data-fragment-index="3">If we suspect a lot of recursion calls, use heap sort</li>
+						<li class="fragment" data-fragment-index="4">GCC libstdc++ uses $2 \log_2 n$ depth limit</li>
+						<li class="fragment" data-fragment-index="5">Microsoft standard library does the same</li>
+					</ul>
+				</section>
+				<section data-auto-animate>
+					<h2 data-id="introsort">Introsort (worst case)</h2>
+					<video data-autoplay src="media/worst_case_gcc.mp4">
+					</video>
+				</section>
+				<section>
+					LLVM libc++ did not do anything at all for a long time
+					<img class="fragment" data-fragment-index="2" width="800" height="180" src="media/libcpp_quadratic.png"/>
+				  <img class="fragment" data-fragment-index="3" width="1500" height="100" src="media/libcpp_quadratic_fixed.png"/>
+				  <p class="fragment" data-fragment-index="3">7 years</p>
+				</section>
+				<section>
+					Only 0.01% of all calls got into the heap sort fallback in production
+				</section>
+				<section data-auto-animate>
+					<h2>LLVM (history)</h2>
+					<image style="margin-top: -20px;" src="media/llvm_sort_2010.webp">
+					</image>
+				</section>
+				<section>
+					What is a good sort?
+					<ul>
+						<li class="fragment" data-fragment-index="2">$O(n\log n)$ comparisons</li>
+						<li class="fragment" data-fragment-index="3">Recognizes almost sorted patterns</li>
+						<li class="fragment" data-fragment-index="4">Fast for modern hardware</li>
+						<li class="fragment" data-fragment-index="5">Fewer comparisons for heavy comparison sorting</li>
+					</ul>
+				</section>
+				<section>
+<style>
+.container1{
+  display: grid;
+  grid-auto-flow: column;
+}
+</style>
+<div class="container1">
+
+<div class="col">
+	<video data-autoplay src="media/libcxx_ascending.mp4">
+					</video>
+	libcxx on ascending
+</div>
+
+<div class="col">
+	<video data-autoplay src="media/libstdcxx_ascending.mp4">
+					</video>
+	libstdcxx on ascending
+</div>
+
+</div>
+				</section>
+				<section>
+					How libcxx has achieved that?
+					Insertion sort on every step up to 8 insertions.
+					<pre><code  class="cpp" data-trim data-noescape data-line-numbers=1|8-12|14-16><script type="text/template">
+const unsigned __limit = 8;
+unsigned __count = 0;
+for (_RandomAccessIterator __i = __j+1; __i != __last; ++__i) {
+    if (__comp(*__i, *__j)) {
+        value_type __t(_VSTD::move(*__i));
+        _RandomAccessIterator __k = __j;
+        __j = __i;
+        // Insert and copy
+        do {
+            *__j = _VSTD::move(*__k);
+            __j = __k;
+        } while (__j != __first && __comp(__t, *--__k));
+        *__j = _VSTD::move(__t);
+        // Exit after 8 trials
+        if (++__count == __limit)
+            return ++__i == __last;
+    }
+    __j = __i;
+}
+					</script></code></pre>
+				</section>
+				<section>
+					Overall every now and then we have a better sorting
+<div class="container1">
+
+<div class="col">
+	<img src="media/pdqsort.png">
+	</img>
+	<img src="media/boost.png">
+	</img>
+</div>
+
+<div class="col">
+	<img src="media/skasort.png">
+	<img src="media/vqsort.png">
+					</img>
+	<img src="media/x86_sort.png">
+</div>
+
+</div>
+				</section>
+				<section>
+					<p>Let's change and save some cycles</p>
+					<p class="fragment" style="color:orange" data-fragment-index="2">We tried</p>
+				</section>
+				<section data-auto-animate>
+					<h2 class="fragment" data-fragment-index="2">Problem: ties</h2>
+					<img class="r-stretch" width="1200" height="400" src="media/ties.png">
+				</section>
+				<section data-auto-animate>
+					<h2>Problem: ties</h2>
+					<pre><code  class="cpp" data-trim data-noescape><script type="text/template">
+std::vector<std::pair<int, int>> first_elements_equal{
+	{1, 1}, {1, 2}
+};
+std::sort(first_elements_equal.begin(),
+          first_elements_equal.end(),
+          [](const auto& lhs, const auto& rhs) {
+            // Compare only by a part of sorted data.
+            return lhs.first < rhs.first;
+          });
+// Serialize or make assumptions about all data.
+// Wrong, might be either 1 or 2.
+assert(first_elements_equal[0].second == 1);
+					</script></code></pre>
+				</section>
+				<section data-auto-animate>
+					<h2 data-id="problem_1">Problem: ties</h2>
+				It took a <a style="color:orange">year</a> to fix all golden tests
+				</section>
+				<section data-auto-animate>
+					<h2 data-id="problem_1">Problem: ties. How</h2>
+<pre><code  class="cpp" data-trim data-noescape data-line-numbers=4><script type="text/template">
+template <class _AlgPolicy, class _RandomAccessIterator, class _Comp>
+inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20
+void __sort_impl(_RandomAccessIterator __first, _RandomAccessIterator __last, _Comp& __comp) {
+  std::__debug_randomize_range<_AlgPolicy>(__first, __last);
+  // ...
+</script></code></pre>
+					<p class="fragment" data-fragment-index="2">Shuffle the range before</p>
+				</section>
+				<section data-auto-animate>
+					<h2 data-id="problem_1">Problem: ties. How</h2>
+<pre><code  class="cpp" data-trim data-noescape><script type="text/template">
+_LIBCPP_HIDE_FROM_ABI static uint_fast64_t __seed() {
+  static char __x;
+  return reinterpret_cast<uintptr_t>(&__x);
+}
+</script></code></pre>
+					<p class="fragment" data-fragment-index="2">Address space layout randomization</p>
+				</section>
+
+				<section>
+					Randomization went beyond std::sort
+					<p class="fragment" data-fragment-index="2">Also to std::nth_element, std::partial_sort</p>
+				</section>
+				<section>
+					<p>std::nth_element, std::partial_sort</p>
+					<img src="media/part_nth.png">
+					<p>Randomize before and randomize after the undefined ranges</p>
+				</section>
+				<section>
+					std::nth_element
+<pre><code  class="cpp" data-trim data-noescape data-line-numbers=7-8,10-11,13-14><script type="text/template">
+template <class _AlgPolicy, class _RandomAccessIterator, class _Compare>
+inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20
+void __nth_element_impl(_RandomAccessIterator __first, _RandomAccessIterator __nth, _RandomAccessIterator __last,
+                        _Compare& __comp) {
+  if (__nth == __last)
+    return;
+  std::__debug_randomize_range<_AlgPolicy>(__first,
+  										   __last);
+  std::__nth_element<_AlgPolicy, __comp_ref_type<_Compare> >(__first, __nth, __last, __comp);
+  std::__debug_randomize_range<_AlgPolicy>(__first,
+  										   __nth);
+  if (__nth != __last) {
+    std::__debug_randomize_range<_AlgPolicy>(++__nth,
+    										 __last);
+  }
+}
+</script></code></pre></section>
+				<section>
+					std::partial_sort
+<pre><code  class="cpp" data-trim data-noescape data-line-numbers=7,10><script type="text/template">
+template <class _AlgPolicy, class _Compare, class _RandomAccessIterator, class _Sentinel>
+_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20
+_RandomAccessIterator __partial_sort(_RandomAccessIterator __first, _RandomAccessIterator __middle, _Sentinel __last,
+                                     _Compare& __comp) {
+  if (__first == __middle)
+      return _IterOps<_AlgPolicy>::next(__middle, __last);
+  std::__debug_randomize_range<_AlgPolicy>(__first, __last);
+  auto __last_iter =
+      std::__partial_sort_impl<_AlgPolicy>(__first, __middle, __last, static_cast<__comp_ref_type<_Compare> >(__comp));
+  std::__debug_randomize_range<_AlgPolicy>(__middle, __last);
+  return __last_iter;
+}
+</script></code></pre></section>
+				<section>
+					<h2>Bugs</h2>
+				</section>
+				<section data-auto-animate>
+					<h2>Determinism</h2>
+					<img src="media/ch.webp">
+					Example: ClickHouse
+				</section>
+				<section data-auto-animate>
+					<h2>Determinism</h2>
+					<ul>
+						<li class="fragment" data-fragment-index="1">Assume you sort some data</li>
+						<li class="fragment" data-fragment-index="2">Cache it</li>
+						<li class="fragment" data-fragment-index="3">Now ties are handled randomly</li>
+						<li class="fragment" data-fragment-index="4" style="color:red">Lower hit rate</li>
+					</ul>
+				</section>
+				<section>
+					<h2>Determinism</h2>
+					Use std::stable_sort
+					<img src="media/ch_stable.webp">
+				</section>
+				<section>
+				Let's write a median function
+<pre><code  class="cpp" data-trim data-noescape data-line-numbers=1-10|3|4|5-7|9><script type="text/template">
+int64_t median(const std::vector<int64_t>& v) {
+	int64_t med = v.size() / 2;
+	std::nth_element(v.begin(), v.begin() + med, v.end());
+	int64_t result = v[med];
+	if (v.size() % 2 == 0) {
+		std::nth_element(v.begin(), v.begin() + med - 1, v.end());
+		result = (v[med] + v[med - 1]) / 2;
+	}
+	return result;
+}
+</script></code></pre></section>
+				<section>
+					<img src="media/nth_incorrect.png">
+					Before that you might get lucky because nth_element puts elements around nth close to total order
+				</section>
+				<section>
+					<b>We found so many of them!</b>
+					<div class="r-stack">
+  <img class="fragment" src="media/nth_1.png">
+  <img class="fragment" src="media/nth_2.png">
+  <img class="fragment" src="media/nth_3.png">
+  <img class="fragment" src="media/nth_4.png">
+  <img class="fragment" src="media/nth_5.png">
+  <img class="fragment" src="media/nth_6.png">
+  <img class="fragment" src="media/nth_7.png">
+  <img class="fragment" src="media/nth_8.png">
+</div>
+				</section>
+				<section>
+					Use <b>_LIBCPP_DEBUG_RANDOMIZE_UNSPECIFIED_STABILITY</b> with libcxx
+				</section>
+				<section>
+					<b>Strict weak ordering</b>
+					<ul>
+						<li>Irreflexivity: $x < x$ is false</li>
+						<li>Asymmetry: $x < y$ and $y < x$ cannot be both true</li>
+						<li>Transitivity: $x < y$ and $y < z$ imply $x < z$</li>
+						<li>Transitivity of incomparability: $x == y$ and $y == z$ imply $x == z$, where $x == y$ means $x < y$ and $y < x$ are both false.</li>
+					</ul>
+				</section>
+				<section>
+					To check this we need to check all triples of elements, it's $O(n^3)$
+					<p class="fragment" style="color:orange" data-fragment-index="2">But what are the risks?</p>
+				</section>
+				<section>
+					<p>On paper, UB. But in practice?</p>
+				</section>
+				<section data-background="media/best_case.webp" data-background-size=1400px>
+					<p style="margin-top: 600px;" href="https://gcc.godbolt.org/z/c71qzM97f"><a>https://gcc.godbolt.org/z/c71qzM97f</a></p>
+				</section>
+				<section data-background="media/risk.png" data-background-size=1800px>
+					<p style="margin-top: 600px;" href="https://gcc.godbolt.org/z/qj7EeMohP"><a>https://gcc.godbolt.org/z/qj7EeMohP</a></p>
+				</section>
+				<section>
+					<h2>Risks</h2>
+					<ul>
+						<li>Incorrect comparator for $\leq 30$ elements, all good</li>
+						<li>Incorrect comparator for $> 30$ elements, <a style="color:red">can fail with OOB</a></li>
+						<li class="fragment" data-fragment-index="2">Have you written a well thought test for 30+ elements?</li>
+					</ul>
+				</section>
+				<section>
+					<b>At Google we consistently (once in months) have outage somewhere because of that</b>
+				</section>
+				<section>
+					<b>OOB read</b>
+<pre><code  class="cpp" data-trim data-noescape><script type="text/template">
+// The search going up is known to be guarded but the search coming down isn't.
+// Prime the downward search with a guard.
+// __m still guards upward moving __i
+while (__comp(*__i, *__m))
+    ++__i;
+</script></code></pre>
+				</section>
+				<section>
+					To check this we need to check all triples of elements, it's $O(n^3)$, sorting is $O(n \log n)$.
+				</section>
+				<section>
+					<b>There is a $O(n^2)$ algorithm to check for strict weak ordering</b>
+					<ul>
+						<li class="fragment">Sort the range, if not std::is_sorted, return false</li>
+						<li class="fragment">Find prefix of all equivalent elements</li>
+						<li class="fragment">Check they are equal</li>
+						<li class="fragment">Check they are less than all next</li>
+						<li class="fragment">Remove them</li>
+						<li class="fragment">Proof can be read at <a href="https://github.com/danlark1/quadratic_strict_weak_ordering">https://github.com/danlark1/quadratic_strict_weak_ordering</a></li>
+					</ul>
+				</section>
+				<section>
+					<p>$O(n^2)$ is still a lot but we can use it for, say, 100 first elements</p>
+					<p style="color:orange">Most sorts are small!</p>
+				</section>
+				<section>
+					<h2 style="color:orange">Caveats</h2>
+					<ul>
+						<li class="fragment">Sort should not fail</li>
+						<li class="fragment">It only tells if strict weak ordering is met</li>
+						<li class="fragment">Arbitrary comparator can do anything</li>
+						<li class="fragment">We can check we don't read OOB in std::sort itself</li>
+					</ul>
+				</section>
+				<section>
+					<img src="media/llvm.png">
+					<p href="https://discourse.llvm.org/t/rfc-strict-weak-ordering-checks-in-the-debug-libc/70217"><a>https://discourse.llvm.org/t/rfc-strict-weak-ordering-checks-in-the-debug-libc/70217</a></p>
+				</section>
+				<section data-background="media/oob_check.png" data-background-size=1800px>
+					<p style="margin-top: -200px;">OOB check in <a href="https://github.com/llvm/llvm-project/commit/36d8b449cfc9850513bb2ed6c07b5b8cc9f1ae3a">36d8b4</a></p>
+				</section>
+				<section>
+					<p>Submitted SWO checks for std::{stable_,partial_}sort and rolled out in LLVM 17 in <a href="https://github.com/llvm/llvm-project/commit/7e1ee1e10dc0b77914de714b8f420c487e5705c6">7e1ee1</a></p>
+					<img src="media/swo_check.png">
+					<p>-D_LIBCPP_DEBUG_STRICT_WEAK_ORDERING_CHECK -D_LIBCPP_ENABLE_DEBUG_MODE=1</p>
+				</section>
+				<section>
+					It took us around <a style="color:orange">6-7 months</a> to fix everything
+				</section>
+				<section>
+					<h2>Bugs</h2>
+				</section>
+				<section>
+<b>We found fewer of them but more dangerous.</b>
+<div class="r-stack">
+
+<pre class="fragment fade-out" data-fragment-index="0"><code  class="cpp" data-trim data-noescape><script type="text/template">
+absl::c_sort(vector, [](const auto& lhs, const auto& rhs) {
+  return lhs >= rhs; // BUG, comp(a, a) is true
+});
+</script></code></pre>
+
+<pre class="fragment current-visible" data-fragment-index="0"><code  class="cpp" data-trim data-noescape><script type="text/template">
+const bool descending = absl::GetFlag(FLAGS_sort_descending);
+absl::c_sort(vector, [descending](const auto& lhs,
+								  const auto& rhs) {
+  if (lhs < rhs) {
+    return descending;
+  }
+  // BUG, if descending is false, comp(a, a) is true.
+  return !descending;
+});
+</script></code></pre>
+
+<pre class="fragment current-visible" data-fragment-index="1"><code  class="cpp" data-trim data-noescape><script type="text/template">
+absl::c_sort(vector, [](const auto& lhs, const auto& rhs) {
+  return lhs->value() < rhs->value();
+});
+
+// In test
+
+TEST(TestSort, NoValue) {
+  std::vector<T> vector = {NoValueElement()};
+  // Technically passes but incorrect.
+  Sort(vector);
+}
+</script></code></pre>
+
+<pre class="fragment current-visible" data-fragment-index="2"><code  class="cpp" data-trim data-noescape><script type="text/template">
+absl::c_sort(vector, [](const auto& lhs, const auto& rhs) {
+  if (!lhs.has_value()) {
+    return true;   // BUG, comp(a, a) can be true.
+  }
+  if (!rhs.has_value()) {
+    return false;
+  }
+  return lhs.value() < rhs.value();
+});
+</script></code></pre>
+
+
+<pre class="fragment current-visible" data-fragment-index="3"><code  class="cpp" data-trim data-noescape><script type="text/template">
+absl::c_sort(*response->mutable_elems(),
+		[&](const Element& a,
+		    const Element& b) {
+    int day_diff_a = ...;
+    int day_diff_b = ...;
+    if (day_diff_a != day_diff_b) {
+      // BUG, a = diff, b = -diff, c = diff can be
+      // comp(a, b) is true because of CompareClosely
+      // comp(b, c) is true because of CompareClosely
+      // but comp(a, c) is false because diff is same.
+      return std::abs(day_diff_a) < std::abs(day_diff_b);
+    }
+    return CompareClosely(a, b)
+});
+</script></code></pre>
+
+
+<pre class="fragment current-visible" data-fragment-index="4"><code  class="cpp" data-trim data-noescape><script type="text/template">
+absl::c_sort(vector, [](const auto& lhs, const auto& rhs) {
+  // Lots of logic.
+  // ...
+  // ...
+  return true; // BUG, comp(a, a) is true.
+});
+</script></code></pre>
+
+<pre class="fragment current-visible" data-fragment-index="5"><code  class="cpp" data-trim data-noescape><script type="text/template">
+absl::c_sort(vector, [](const auto& lhs, const auto& rhs) {
+  absl::StatusOr<bool> cmp = Compare(lhs, rhs);
+  if (!cmp.ok()) {
+    // BUG, a, b, c can be like comp(a, b) is true,
+    // comp(b, c) is true, comp(a, c) has !cmp.ok().
+    return false;
+  }
+  // ...
+});
+</script></code></pre>
+
+<pre class="fragment current-visible" data-fragment-index="6"><code  class="cpp" data-trim data-noescape><script type="text/template">
+std::sort(points.begin(), points.end(),
+              [](const DataPoint& point_1,
+                 const DataPoint& point_2) {
+  if (MathUtil::AlmostEquals(point_1.coordinates[0],
+                             point_2.coordinates[0])) {
+    return point_1.id < point_2.id;
+  }
+  return point_1.coordinates[0] < point_2.coordinates[0];
+});
+</script></code></pre>
+
+<p class="fragment current-visible" data-fragment-index="7">($a$ is equal to $a + \epsilon$), ($a+\epsilon$ equals to $a+2\epsilon$) but
+($a$ is not equal to $a + 2\epsilon$). Transitivity of incomparability is lost</p>
+
+<pre class="fragment current-visible" data-fragment-index="8"><code  class="cpp" data-trim data-noescape><script type="text/template">
+std::vector<float> vector_with_possibly_nans = Fill();
+absl::c_sort(vector_with_possibly_nans);
+// Can be bug:
+// As doubles/floats can be NaN which means x < NaN and NaN < x
+// are both false and that means x is equivalent to NaN
+// thus for every finite x we have x == NaN but clearly
+// x == NaN and y == NaN does not imply x == y.
+// If you are sure your sort does not have NaNs, no action needed.
+</script></code></pre>
+
+<img class="fragment current-visible" data-fragment-index="9" src="media/everything.webp">
+<img class="fragment current-visible" data-fragment-index="10" src="media/sort_1.png">
+<img class="fragment current-visible" data-fragment-index="11" src="media/sort_2.png">
+<img class="fragment current-visible" data-fragment-index="12" src="media/sort_3.png">
+<img class="fragment current-visible" data-fragment-index="13" src="media/sort_4.png">
+
+<pre class="fragment current-visible" data-fragment-index="14"><code  class="cpp" data-trim data-noescape><script type="text/template">
+// Self modifying comparator can lead to O(n^2) worst case
+std::nth_element(tmp.begin(), tmp.end() - 2, tmp.end(), [&](int x, int y) {
+	if (v[x] == gas && v[y] == gas) {
+		if (x == candidate) v[x] = num_solid++;
+		else v[y] = num_solid++;
+	}
+	if (v[x] == gas) candidate = x;
+	else if (v[y] == gas) candidate = y;
+	return v[x] < v[y];
+});
+</script></code></pre>
+
+<a class="fragment current-visible" data-fragment-index="15" href="https://github.com/llvm/llvm-project/issues/52747">
+libc++ std::nth_element is quadratic, should be linear on average #52747</a>
+
+<!--   <img class="fragment" src="media/nth_1.png">
+  <img class="fragment" src="media/nth_2.png">
+  <img class="fragment" src="media/nth_3.png">
+  <img class="fragment" src="media/nth_4.png">
+  <img class="fragment" src="media/nth_5.png">
+  <img class="fragment" src="media/nth_6.png">
+  <img class="fragment" src="media/nth_7.png">
+  <img class="fragment" src="media/nth_8.png"> -->
+</div>
+</section>
+				<section>
+					<h2>Sorting trivia</h2>
+				</section>
+				<section>
+					Can we sort <b>{1.02, 1.01, 1.0}</b>?
+					<p class="fragment" style="color:green" data-fragment-index="2">Yes</p>
+				</section>
+				<section>
+					Can we sort <b>{3.0, NaN, 4.0}</b>?
+					<p class="fragment" style="color:red" data-fragment-index="2">No</p>
+					<p class="fragment" data-fragment-index="3">NaN thinks it is equal to 3.0 and 4.0</p>
+				</section>
+				<section>
+					Can we sort <b>{NaN, 3.0, NaN}</b>?
+					<p class="fragment" style="color:green" data-fragment-index="2">Yes</p>
+					<p class="fragment" data-fragment-index="3">All elements are equal</p>
+				</section>
+				<section>
+					<h2>What are we changing?</h2>
+					<ul>
+						<li class="fragment">After these cleanups we can change to any sort</li>
+						<li class="fragment">We chose a mix of BlockQuickSort and pdqsort</li>
+					</ul>
+				</section>
+				<section>
+				<p class="fragment" data-fragment-index="3">Data dependent branches are hard to predict</p>
+<pre><code class="cpp" data-trim data-noescape data-line-numbers=1-10|5-6><script type="text/template">
+// *__m is median. partition [__first, __m) < *__m and
+// *__m <= [__m, __last)
+// Special handling for almost sorted targets
+while (true) {
+  while (__comp(*++__i, *__m));
+  while (!__comp(*--__j, *__m));
+  if (__i > __j) break;
+  swap(*__i, *__j);
+}
+swap(*__i, *__m);
+</script></code></pre>
+				</section>
+				<section>
+					Pack results into blocks
+<pre><code class="cpp" data-trim data-noescape data-line-numbers=1-10|1><script type="text/template">
+	uint64_t __left_bitset = 0;
+	_RandomAccessIterator __iter = __first;
+	for (int __j = 0; __j < __block_size;) {
+		bool __comp_result = !__comp(*__iter, __pivot);
+		__left_bitset |= (__comp_result << __j);
+		__j++;
+		++__iter;
+	}
+</script></code></pre>
+				</section>
+				<section>
+					CTZ - Count Trailing Zeros, BLSR - Reset Lowest Set Bit
+<pre><code class="cpp" data-trim data-noescape data-line-numbers=1-10|3,5|4,6|7><script type="text/template">
+void __swap_bitset_pos(__first, __last, __left_bitset, __right_bitset) {
+  while (__left_bitset != 0 && __right_bitset != 0) {
+    difference_type tz_left = __ctz(__left_bitset);
+    __left_bitset = __blsr(__left_bitset);
+    difference_type tz_right = __ctz(__right_bitset);
+    __right_bitset = __blsr(__right_bitset);
+    _VSTD::iter_swap(__first + tz_left, __last - tz_right);
+  }
+}
+</script></code></pre>
+				</section>
+				<section>
+					We also improved picking a pivot out of 9 elements. So called "Tukey's ninther"
+<pre><code class="cpp" data-trim data-noescape  data-line-numbers=1-9|11-13><script type="text/template">
+sort3(first,
+			first + half_len,
+			last - 1, comp);
+sort3(first + 1,
+			first + (half_len - 1),
+			last - 2, comp);
+sort3(first + 2,
+			first + (half_len + 1),
+			last - 3, comp);
+
+sort3(first + (half_len - 1),
+			first + half_len,
+			first + (half_len + 1), comp);
+</script></code></pre>
+				</section>
+				<section>
+					<img src="media/simd_part.webp">
+					<a href="https://godbolt.org/z/nrhT88MsM">https://godbolt.org/z/nrhT88MsM</a>
+				</section>
+				<section>
+<pre>
+                                   old          new
+BM_Sort_uint64_Rand_1      4.26ns ± 0%  4.41ns ± 1%  3.44%
+BM_Sort_uint64_Rand_4      1.96ns ± 0%  1.95ns ± 1%  -0.34%
+BM_Sort_uint64_Rand_16     10.5ns ± 0%  11.6ns ± 1%  10.77%
+BM_Sort_uint64_Rand_64     18.8ns ± 0%  17.5ns ± 1%  -6.60%
+BM_Sort_uint64_Rand_256    26.4ns ± 0%  21.7ns ± 1%  -17.88%
+BM_Sort_uint64_Rand_1024   33.8ns ± 1%  24.6ns ± 1%  -27.15%
+BM_Sort_uint64_Rand_16384  48.7ns ± 0%  30.1ns ± 1%  -38.10%
+BM_Sort_uint64_Rand_262144 63.4ns ± 1%  35.7ns ± 1%  -43.71%
+</pre>
+			On other patterns we sometimes regressed but by a little, hardest cases are random.
+
+				</section>
+				<section>
+<pre>
+BM_Sort_string_Random_1      4.66ns ± 6%  4.40ns ± 4%    -5.55%
+BM_Sort_string_Random_4      14.9ns ± 3%  15.0ns ± 6%      ~
+BM_Sort_string_Random_16     45.5ns ± 6%  35.8ns ± 8%   -21.37%
+BM_Sort_string_Random_64     66.6ns ± 4%  58.2ns ± 3%   -12.69%
+BM_Sort_string_Random_256    86.0ns ± 5%  77.4ns ± 3%   -10.01%
+BM_Sort_string_Random_1024   106ns ± 3%    96ns ± 6%    -9.39%
+BM_Sort_string_Random_16384  154ns ± 3%   141ns ± 5%    -8.03%
+BM_Sort_string_Random_262144 213ns ± 4%   197ns ± 4%    -7.59%
+</pre>
+				</section>
+				<section>
+					<h2>Some thoughts</h2>
+					<ul>
+						<li class="fragment">Default for standard sorting is unstable</b></li>
+						<li class="fragment">Python, Rust, Java have stable default sorts</li>
+						<li class="fragment">Why do we have std::sort that can read OOB even if comparator is broken?</li>
+						<li class="fragment">std::ranges::sort wanted to have 1 argument, found 0 bugs with different iterators in std::sort</li>
+					</ul>
+				</section>
+				<section>
+					<h2>Some more thoughts</h2>
+					<ul>
+						<li>std::weak_ordering in C++20 allows to make fewer bugs</li>
+					</ul>
+<pre><code class="cpp" data-trim data-noescape><script type="text/template">
+struct Weak {
+	bool operator==(Weak const&) const;
+	std::weak_ordering operator<=>(Weak const&) const;
+};
+
+struct Foo {
+	Weak w;
+	int i;
+	auto operator<=>(Foo const&) const = default;
+};
+</script></code></pre>
+				</section>
+				<section>
+					<h2>Results</h2>
+					<ul>
+						<li class="fragment">We called it a <b style="color:orange;">comparator sanitizer</b></li>
+						<li class="fragment">We saw 7-8% perf improvement in production</li>
+						<li class="fragment">Reduced branch mispredictions a lot</li>
+						<li class="fragment">Fixed thousands of bugs</li>
+						<li class="fragment">Fought the Hyrum's Law</li>
+						<li class="fragment">Even simplest things are hard to do right</li>
+						<li class="fragment">Things take time (2.5 years)</li>
+					</ul>
+				</section>
+				<section data-auto-animate>
+					<h2 data-id="header">What can you do?</h2>
+					<ul>
+						<li class="fragment" class="r-fit-text">If you use libcxx, enable <b style="color:orange;">-D_LIBCPP_DEBUG_RANDOMIZE_UNSPECIFIED_STABILITY -D_LIBCPP_DEBUG_STRICT_WEAK_ORDERING_CHECK -D_LIBCPP_ENABLE_DEBUG_MODE=1</b> in your <b style="color:orange;">debug builds</b></li>
+						<li class="fragment">Probably randomization can be applied to std::partition, std::make_heap</li>
+						<li class="fragment">SWO checks for std::nth_element, etc</li>
+					</ul>
+				</section>
+				<section data-auto-animate>
+					<h2 data-id="header">What can you do?</h2>
+					<ul>
+						<li class="fragment">Remember Bjarne talked about invalidation of vector iterators?</li>
+						<li class="fragment">In debug mode reallocate on <a style="color:orange">first 100 push_backs</a></li>
+					</ul>
+				</section>
+				<section data-auto-animate>
+					<h2>Links and further</h2>
+					<ul>
+						<li><a href="https://danlark.org/2022/04/20/changing-stdsort-at-googles-scale-and-beyond">danlark.org blog about sorting</a></li>
+						<li><a href="https://discourse.llvm.org/t/rfc-strict-weak-ordering-checks-in-the-debug-libc/70217">LLVM RFC for strict weak ordering checks</a></li>
+						<li><a href="https://reviews.llvm.org/D122780">Sorting change itself with benchmarks, etc</a></li>
+					</ul>
+				</section>
+				<section>
+					<ul>
+					  <li>Personal Email: <a href="kutdanila@gmail.com">kutdanila@gmail.com</a></li>
+					  <li>Work Email: <a href="danilak@google.com">danilak@google.com</a></li>
+					  <li>Github: <a href="https://github.com/danlark1">@Danlark1</a></li>
+					  <li>Telegram: <a href="https://t.me/danlark">@Danlark</a></li>
+				  </ul>
+				</section>
+				</section>
+			</div>
+		</div>
+
+		<script src="dist/reveal.js"></script>
+		<script src="plugin/notes/notes.js"></script>
+		<script src="plugin/markdown/markdown.js"></script>
+		<script src="plugin/highlight/highlight.js"></script>
+		<script src="plugin/math/math.js"></script>
+
+		<script>
+			// More info about initialization & config:
+			// - https://revealjs.com/initialization/
+			// - https://revealjs.com/config/
+			// Reveal.initialize({
+			// 	hash: true,
+			// 	slideNumber: 'c/t',
+			// 	// Learn about plugins: https://revealjs.com/plugins/
+			// 	math: {
+		    //   mathjax: 'https://cdn.jsdelivr.net/gh/mathjax/mathjax@2.7.8/MathJax.js',
+		    //   config: 'TeX-AMS_HTML-full',
+		    //   // pass other options into `MathJax.Hub.Config()`
+		    //   TeX: { Macros: { RR: "{\\bf R}" } }
+		    // },
+		    Reveal.configure({ pdfMaxPagesPerSlide: 1 })
+			Reveal.configure({ pdfSeparateFragments: false });
+			Reveal.initialize({
+
+				hash: true,
+				slideNumber: 'c/t',
+				// Learn about plugins: https://revealjs.com/plugins/
+				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes, RevealMath ]
+			});
+		</script>
+	</body>
+</html>
